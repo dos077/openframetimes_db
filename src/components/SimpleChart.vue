@@ -6,24 +6,26 @@
 
 <script>
 import Chart from 'chart.js/auto';
+import { plotGroups } from '../data/plotChart';
 
 export default {
-  name: 'DemoChart',
-  props: ['chartData', 'chartTitle'],
+  name: 'SimpleChart',
+  props: ['captures'],
   data: () => ({
     chart: null,
+    chartData: null,
+    chartTitle: null,
   }),
   watch: {
-    chartData(newData) {
-      this.drawChart(newData);
+    captures(newCaptures) {
+      this.drawChart(newCaptures);
     },
   },
   methods: {
-    drawChart(newData) {
-      if (!newData) return;
-      const { chart, chartTitle } = this;
-      if (chart) chart.destroy();
-      const chartData = newData;
+    drawChart(newCaptures) {
+      if (!newCaptures || !newCaptures.length) return;
+      const { chartData, chartTitle } = plotGroups(newCaptures);
+      if (this.chart) this.chart.destroy();
       const ctx = this.$refs.chart;
       this.chart = new Chart(ctx, {
         type: 'line',
@@ -64,7 +66,7 @@ export default {
     },
   },
   mounted() {
-    this.drawChart(this.chartData);
+    this.drawChart(this.captures);
   },
 };
 </script>

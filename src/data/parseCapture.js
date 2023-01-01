@@ -1,3 +1,29 @@
+const resOptions = ['720p', '1080p', '1440p', 'WQHD', '4K'];
+const presetOptions = ['low', 'medium', 'high', 'ultra'];
+const upscaleOptions = ['quality', 'balanced', 'performance'];
+
+const interpretComment = (comment) => {
+  const data = {};
+  comment.split(' ').forEach((tString) => {
+    const term = tString.toLowerCase();
+    resOptions.forEach((res) => {
+      if (term.includes(res.toLocaleLowerCase())) data.resolution = res;
+    });
+    presetOptions.forEach((preset) => {
+      if (term.includes(preset.toLocaleLowerCase())) data.gamePreset = preset;
+    });
+    let upscale = false;
+    if (term.includes('fsr-')) upscale = 'FSR';
+    if (term.includes('dlss-')) upscale = 'DLSS';
+    if (upscale) {
+      upscaleOptions.forEach((upPreset) => {
+        if (term.includes(upPreset)) data[upscale] = upPreset;
+      });
+    }
+  });
+  return data;
+};
+
 const parseCapFrameX = ({ Info, Runs }) => {
   const {
     Processor, GameName, CreationDate, OS, SystemRam, GPU, Comment, GPUDriverVersion,
@@ -12,12 +38,13 @@ const parseCapFrameX = ({ Info, Runs }) => {
     info: {
       CPU: Processor,
       gameName: GameName,
-      date: new Date(CreationDate),
+      creationDate: new Date(CreationDate),
       OS,
       RAM: SystemRam,
       GPU,
       comment: Comment,
       driver: GPUDriverVersion,
+      ...interpretComment(Comment),
     },
     frameTimes,
   };
