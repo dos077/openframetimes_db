@@ -1,22 +1,27 @@
 <template>
-  <div class="col-3" v-if="isOn">
-    <div class="text-h6">
-      {{ metaKey }}
-    </div>
-    <q-chip v-for="meta in activeOptions"
-      :key="meta.name"
-      clickable @click="select(meta)"
-      :selected="meta.name === selected"
-      color="indigo-6" dark
-    >
-      {{  meta.name  }}
-    </q-chip>
-    <q-chip v-for="meta in disabledOptions"
-      :key="meta.name"
-    >
-      {{  meta.name  }}
-    </q-chip>
-  </div>
+  <q-btn-dropdown  v-if="isOn"
+    flat
+    :label="metaKey"
+  >
+    <q-card>
+      <q-card-section>
+        <q-chip v-for="meta in activeOptions"
+          :key="meta.name"
+          clickable @click="select(meta)"
+          :selected="meta.name === selected"
+          outline
+        >
+          {{  meta.name  }}
+        </q-chip>
+        <q-chip v-for="meta in disabledOptions"
+          :key="meta.name"
+          outline color="grey-5"
+        >
+          {{  meta.name  }}
+        </q-chip>
+      </q-card-section>
+    </q-card>
+  </q-btn-dropdown>
 </template>
 
 <script>

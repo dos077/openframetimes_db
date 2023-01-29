@@ -20,6 +20,7 @@ const actions = {
   async logOut(context) {
     await firebase.auth.signOut();
     context.commit('setCurrentUser', null);
+    context.commit('setUserRuns', []);
   },
   async updateUser(context, updates) {
     const { uid } = context.state.currentUser;

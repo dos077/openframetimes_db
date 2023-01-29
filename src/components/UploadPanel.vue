@@ -1,68 +1,23 @@
 <template>
-  <div class="col">
-    <q-card style="min-width: 20rem;">
-      <q-card-section class="row q-gutter-md justify-center">
-        <div class="col-10">
-          <q-file v-model="localFile" label="frametime capture json" />
-        </div>
+  <div class="col-12">
+    <q-card flat bordered>
+      <q-toolbar>
+        <q-toolbar-title>
+          Upload to Database
+        </q-toolbar-title>
+      </q-toolbar>
+      <q-card-section class="text-caption">
+        only captures from CapFrameX are supported at this time
       </q-card-section>
-      <q-card-section v-if="parsed"
-        class="row q-gutter-md justify-center">
-        <div class="col-5">
-          <q-input v-model="comment" label="comment" readonly />
-        </div>
-        <div class="col-5">
-          <q-input v-model="gameName" label="game" readonly />
-        </div>
-        <div class="col-5">
-          <q-input v-model="CPU" label="CPU" :disable="!localFile" readonly />
-        </div>
-        <div class="col-5">
-          <q-input v-model="GPU" label="GPU" :disable="!localFile" readonly />
-        </div>
-        <div class="col-5">
-          <q-input v-model="RAM" label="RAM" :disable="!localFile" readonly />
-        </div>
-        <div class="col-5">
-          <q-select v-model="resolution" :options="resOptions"
-            label="resolution"
-            :disable="!localFile" />
-        </div>
-        <div class="col-5">
-          <q-select v-model="syncCap" :options="syncCapOptions"
-            label="refresh rate/framecap"
-            :disable="!localFile" />
-        </div>
-        <div class="col-5">
-          <q-select v-model="gamePreset" :options="presetOptions"
-            label="preset"
-            :disable="!localFile" />
-        </div>
-        <div class="col-5">
-          <q-select v-model="FSR" :options="upscaleOptions"
-            label="FSR"
-            :disable="!localFile" />
-        </div>
-        <div class="col-5">
-          <q-select v-model="DLSS" :options="upscaleOptions"
-            label="DLSS"
-            :disable="!localFile" />
-        </div>
-      </q-card-section>
-      <q-card-section v-if="previewCaptures">
-        <simple-chart :captures="previewCaptures" />
+      <file-uploader @newPreview="setPreview" />
+      <q-card-section v-if="previewCapture">
+        <simple-chart :captures="[previewCapture]" />
       </q-card-section>
       <q-card-actions>
         <q-btn
-          color="green"
-          :disable="loading || !captureReady" @click="previewCapture"
-        >
-          preview
-        </q-btn>
-        <q-space />
-        <q-btn
-          color="blue"
+          color="blue-8"
           :disable="loading || !captureReady" @click="addRun"
+          outline
         >
           upload
         </q-btn>
@@ -74,98 +29,55 @@
 <script>
 import SimpleChart from '@/components/SimpleChart.vue';
 import { requiredKeys, optionalKeys } from '@/data/runKeys';
-import { parseCapture, readCapture } from '../data/parseCapture';
+import FileUploader from './upload/FileUploader.vue';
 
 export default {
   name: 'UploadPanel',
   components: {
     SimpleChart,
+    FileUploader,
   },
   data: () => ({
-    localFile: null,
-    previewCaptures: null,
+    previewCapture: null,
     loading: false,
-    CPU: null,
-    GPU: null,
-    RAM: null,
-    resolution: null,
-    resOptions: [null, '720p', '1080p', '1440p', 'WQHD', '4K'],
-    syncCap: null,
-    syncCapOptions: [null, 40, 60, 120, 144, 165],
-    gamePreset: null,
-    presetOptions: [null, 'low', 'medium', 'high', 'ultra'],
-    FSR: null,
-    DLSS: null,
-    upscaleOptions: [null, 'quality', 'balanced', 'performance'],
-    comment: null,
-    gameName: null,
-    parsed: null,
-    creationDate: null,
-    driver: null,
   }),
   computed: {
     captureReady() {
-      if (!this.parsed) return false;
+      const { previewCapture } = this;
+      if (!previewCapture || !previewCapture.frameTimes) return false;
       let ready = true;
-      requiredKeys.forEach((key) => { if (!this[key]) ready = false; });
+      requiredKeys.forEach((key) => {
+        if (!previewCapture[key]) {
+          console.log('preview missing', key);
+          ready = false;
+        }
+      });
       return ready;
-    },
-    userId() {
-      return this.$store.state.currentUser.uid;
-    },
-    frameTimes() {
-      return this.parsed ? this.parsed.frameTimes : null;
     },
   },
   watch: {
-    async localFile(newFile) {
-      if (newFile) {
-        const rawData = await readCapture(newFile);
-        this.parsed = parseCapture(rawData);
-      } else {
-        this.parsed = null;
-        this.previewCaptures = null;
-      }
-    },
     parsed(newParsed) {
       if (newParsed && newParsed.info) {
         ['comment', ...requiredKeys, ...optionalKeys].forEach((key) => {
           if (newParsed.info[key]) this[key] = newParsed.info[key];
+          else this[key] = null;
         });
       }
     },
   },
   methods: {
-    async previewCapture() {
-      const {
-        parsed, CPU, GPU, RAM, resolution, gamePreset, FSR, DLSS, gameName, syncCap,
-      } = this;
-      if (!parsed) return;
-      const captureData = {
-        CPU,
-        GPU,
-        RAM,
-        resolution,
-        syncCap,
-        gameName,
-        gamePreset,
-        FSR: FSR ? `FSR-${FSR}` : null,
-        DLSS: DLSS ? `DLSS-${DLSS}` : null,
-        frameTimes: parsed.frameTimes,
-      };
-      this.previewCaptures = [captureData];
+    setPreview(newPreview) {
+      console.log('new preview capture');
+      this.previewCapture = newPreview;
     },
     async addRun() {
       this.loading = true;
-      if (!this.parsed || !this.parsed.frameTimes) return;
-      if (requiredKeys.some((key) => !this[key])) return;
-      const runData = { frameTimes: this.parsed.frameTimes };
-      requiredKeys.forEach((key) => {
-        if (!this[key]) return;
-        runData[key] = this[key];
-      });
-      optionalKeys.forEach((key) => {
-        if (this[key]) runData[key] = this[key];
+      const { previewCapture } = this;
+      if (!previewCapture || !previewCapture.frameTimes) return;
+      if (requiredKeys.some((key) => !previewCapture[key])) return;
+      const runData = { frameTimes: previewCapture.frameTimes };
+      [...optionalKeys, ...requiredKeys].forEach((key) => {
+        if (previewCapture[key]) runData[key] = previewCapture[key];
       });
       this.$store.dispatch('addRun', runData);
       this.localFile = null;

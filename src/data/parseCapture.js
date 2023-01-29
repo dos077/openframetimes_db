@@ -1,3 +1,5 @@
+import { metaKeys } from './runKeys';
+
 const resOptions = ['720p', '1080p', '1440p', 'WQHD', '4K'];
 const presetOptions = ['low', 'medium', 'high', 'ultra'];
 const upscaleOptions = ['quality', 'balanced', 'performance'];
@@ -24,6 +26,16 @@ const interpretComment = (comment) => {
   return data;
 };
 
+const trimFrameTimes = (frameTimes, frameLimit = 2024) => {
+  if (frameTimes.length <= frameLimit) return frameTimes;
+  const newTimes = [...frameTimes];
+  while (newTimes.length > frameLimit) {
+    const cutIndex = Math.round(newTimes.length * Math.random());
+    newTimes.splice(cutIndex, 100);
+  }
+  return newTimes;
+};
+
 const parseCapFrameX = ({ Info, Runs }) => {
   const {
     Processor, GameName, CreationDate, OS, SystemRam, GPU, Comment, GPUDriverVersion,
@@ -46,7 +58,7 @@ const parseCapFrameX = ({ Info, Runs }) => {
       driver: GPUDriverVersion,
       ...interpretComment(Comment),
     },
-    frameTimes,
+    frameTimes: trimFrameTimes(frameTimes),
   };
 };
 
@@ -65,4 +77,26 @@ const readCapture = async (file) => new Promise((resolve, reject) => {
   fileReader.readAsText(file);
 });
 
-export { parseCapture, readCapture };
+const compareCapture = (a, b) => metaKeys
+  .every((key) => (!a[key] && !b[key]) || a[key] === b[key]);
+
+const groupCaptures = (captures) => {
+  const groups = [captures[0]];
+  captures.slice(1).forEach((b) => {
+    const matched = groups.find((a) => compareCapture(a, b));
+    if (matched && matched.frameTimes) {
+      matched.frameTimes.push(...b.frameTimes);
+    } else {
+      groups.push(b);
+    }
+  });
+  const sortedGroups = groups
+    .map((g) => {
+      const avgFt = g.frameTimes.reduce((a, b) => a + b) / g.frameTimes.length;
+      return { ...g, avgFt };
+    })
+    .sort((a, b) => b.avgFt - a.avgFt);
+  return sortedGroups;
+};
+
+export { parseCapture, readCapture, groupCaptures };

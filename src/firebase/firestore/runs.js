@@ -1,5 +1,5 @@
 import {
-  collection, addDoc, doc, deleteDoc, getDocs, query, where, getDoc,
+  collection, addDoc, doc, deleteDoc, getDocs, query, where, getDoc, getDocFromCache,
 } from 'firebase/firestore';
 import { requiredKeys, optionalKeys, metaKeys } from '@/data/runKeys';
 
@@ -37,14 +37,34 @@ const runStore = (db) => {
     }
   };
 
-  const get = async (runId) => {
+  const getOnline = async (runId) => {
     try {
       const runRef = doc(db, 'runs', runId);
       const runSnap = await getDoc(runRef);
-      return parseFromFirestore(runSnap);
+      if (runSnap.exists) {
+        return parseFromFirestore(runSnap);
+      }
+      console.warn('run does not exists', runId);
+      return false;
     } catch (err) {
       console.error(err);
       return false;
+    }
+  };
+
+  const get = async (runId) => {
+    try {
+      const runRef = doc(db, 'runs', runId);
+      const runSnap = await getDocFromCache(runRef);
+      if (runSnap.exists) {
+        return parseFromFirestore(runSnap);
+      }
+      console.warn('run does not exists', runId);
+      return false;
+    } catch (err) {
+      const isCacheErr = err.message.match('Failed to get document from cache');
+      if (!isCacheErr) console.warn(err);
+      return getOnline(runId);
     }
   };
 
