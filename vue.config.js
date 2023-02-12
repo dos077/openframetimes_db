@@ -7,6 +7,7 @@ module.exports = defineConfig({
 
   devServer: {
     port: 5500,
+    historyApiFallback: true,
   },
 
   pluginOptions: {
@@ -15,4 +16,9 @@ module.exports = defineConfig({
       rtlSupport: false,
     },
   },
+
+  publicPath: process.env.NODE_ENV === 'production'
+    ? '/openframetimes_db/'
+    : './',
+
 });

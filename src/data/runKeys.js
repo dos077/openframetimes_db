@@ -1,9 +1,9 @@
 const requiredKeys = [
-  'CPU', 'GPU', 'RAM', 'gameName', 'resolution', 'gamePreset', 'userId', 'frameTimes',
+  'CPU', 'GPU', 'RAM', 'gameName', 'resolution', 'gamePreset', 'userId', 'frameTimes', 'FSR', 'DLSS',
 ];
 
 const optionalKeys = [
-  'syncCap', 'FSR', 'DLSS', 'comment', 'creationDate', 'driver',
+  'syncCap', 'comment', 'creationDate', 'driver',
 ];
 
 const metaKeys = [

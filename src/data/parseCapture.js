@@ -15,12 +15,22 @@ const interpretComment = (comment) => {
       if (term.includes(preset.toLocaleLowerCase())) data.gamePreset = preset;
     });
     let upscale = false;
-    if (term.includes('fsr-')) upscale = 'FSR';
-    if (term.includes('dlss-')) upscale = 'DLSS';
+    if (term.includes('fsr-')) {
+      upscale = 'FSR';
+      data.DLSS = 'off';
+    } else if (term.includes('dlss-')) {
+      upscale = 'DLSS';
+      data.FSR = 'off';
+    } else {
+      data.DLSS = 'off';
+      data.FSR = 'off';
+    }
     if (upscale) {
-      upscaleOptions.forEach((upPreset) => {
-        if (term.includes(upPreset)) data[upscale] = upPreset;
+      let upPreset = 'off';
+      upscaleOptions.forEach((op) => {
+        if (term.includes(op)) upPreset = op;
       });
+      data[upscale] = upPreset;
     }
   });
   return data;

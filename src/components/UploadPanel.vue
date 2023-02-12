@@ -9,7 +9,10 @@
       <q-card-section class="text-caption">
         only captures from CapFrameX are supported at this time
       </q-card-section>
-      <file-uploader @newPreview="setPreview" />
+      <file-uploader @newPreview="setPreview"
+        @formValidated="setFormReady(true)"
+        @formError="setFormReady(false)"
+      />
       <q-card-section v-if="previewCapture">
         <simple-chart :captures="[previewCapture]" />
       </q-card-section>
@@ -40,19 +43,13 @@ export default {
   data: () => ({
     previewCapture: null,
     loading: false,
+    isFormReady: false,
   }),
   computed: {
     captureReady() {
-      const { previewCapture } = this;
+      const { previewCapture, isFormReady } = this;
       if (!previewCapture || !previewCapture.frameTimes) return false;
-      let ready = true;
-      requiredKeys.forEach((key) => {
-        if (!previewCapture[key]) {
-          console.log('preview missing', key);
-          ready = false;
-        }
-      });
-      return ready;
+      return isFormReady;
     },
   },
   watch: {
@@ -71,6 +68,7 @@ export default {
       this.previewCapture = newPreview;
     },
     async addRun() {
+      if (!this.isFormReady) return;
       this.loading = true;
       const { previewCapture } = this;
       if (!previewCapture || !previewCapture.frameTimes) return;
@@ -85,6 +83,9 @@ export default {
     },
     async removeRun(run) {
       this.$store.dispatch('removeRun', run);
+    },
+    setFormReady(ready) {
+      this.isFormReady = ready;
     },
   },
 };

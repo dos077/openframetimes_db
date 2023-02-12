@@ -91,7 +91,7 @@ const adminStore = (db) => {
     }
   };
 
-  return { processLogs };
+  return { processLogs, addMeta, removeMeta };
 };
 
 export default adminStore;
