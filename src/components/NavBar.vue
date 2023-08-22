@@ -15,10 +15,6 @@
           to="/">
           Database
         </q-item>
-        <q-item :clickable="currentRoute !== 'profile'"
-          to="/profile">
-          User Profile
-        </q-item>
         <q-item :clickable="currentRoute !== 'playground'"
           to="/playground">
           Playground
@@ -30,9 +26,6 @@
     <q-toolbar>
       <q-btn flat to="/" :disable="currentRoute === 'home'">
         Database
-      </q-btn>
-      <q-btn flat to="/profile" :disable="currentRoute === 'profile'">
-        User Profile
       </q-btn>
       <q-btn flat to="/playground" :disable="currentRoute === 'playground'">
         Playground

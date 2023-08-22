@@ -33,7 +33,7 @@
         </q-toolbar>
         <q-toolbar v-if="customKeys">
           <p>
-            Group data by
+            Label Graph:
           </p>
           <q-option-group
             name="data_keys"

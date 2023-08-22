@@ -64,22 +64,27 @@
           class="col-6" :label="'1/' + localFiles.length"
         >
           <template v-slot:append>
-            <q-btn flat round icon="mdi-close-circle"
-              @click="localFiles = localFiles.slice(1)" />
+            <q-btn @click="localFiles = localFiles.slice(1)"
+              color="red-8"
+              outline
+              class="q-mr-sm"
+              size="small"
+            >
+              remove
+            </q-btn>
+            <q-btn @click="confirm"
+              color="blue-8"
+              :disable="loading || !captureReady"
+              outline
+              size="small"
+            >
+              add
+            </q-btn>
           </template>
         </q-input>
       </q-form>
       <simple-chart :captures="[previewCapture]" :mini="true" />
     </q-card-section>
-    <q-card-actions v-if="currentFile">
-      <q-btn @click="confirm"
-        color="blue-8"
-        :disable="loading || !captureReady"
-        outline
-      >
-        confirm
-      </q-btn>
-    </q-card-actions>
   </q-card>
 </template>
 
@@ -213,24 +218,7 @@ export default {
   },
   methods: {
     setPreview(parsed) {
-      const {
-        CPU, GPU, RAM, resolution, gamePreset, upscale, gameName, syncCap, comment,
-      } = this;
-      const userId = this.currentUser ? this.currentUser.uid : null;
-      const captureData = {
-        userId,
-        CPU,
-        GPU,
-        RAM,
-        resolution,
-        syncCap,
-        gameName,
-        gamePreset,
-        upscale,
-        comment,
-        frameTimes: parsed.frameTimes,
-      };
-      this.previewCapture = captureData;
+      this.previewCapture = parsed;
     },
     sendPreview() {
       const {

@@ -1,7 +1,7 @@
 <template>
   <q-card flat :bordered="!mini">
     <q-card-section>
-      <canvas ref="chart" />
+      <canvas :id="chartId" />
     </q-card-section>
     <q-separator />
     <q-card-actions v-if="!mini">
@@ -24,6 +24,8 @@ const mainColors = [
   { r: 244, g: 81, b: 30 },
 ];
 
+const charts = {};
+
 export default {
   name: 'SimpleChart',
   props: ['captures', 'captureGroups', 'refKeys', 'mini'],
@@ -34,6 +36,7 @@ export default {
     plotter: Plotter(),
     exponent: null,
     expOptions: [1.25, 1.5, 2, 3, 5],
+    chartId: `chart-${(new Date()).getTime()}`,
   }),
   watch: {
     captures(newCaptures) {
@@ -59,7 +62,7 @@ export default {
   },
   methods: {
     drawChart(newCaptures, newGroups) {
-      const { mini, refKeys, plotter } = this;
+      const { plotter, refKeys } = this;
       let plotted = null;
       if (newCaptures && newCaptures.length) {
         plotted = plotter.plotGroups([groupCaptures(newCaptures, refKeys)]);
@@ -68,10 +71,23 @@ export default {
       } else {
         return;
       }
-      const { chartData, chartTitle } = plotted;
-      if (this.chart) this.chart.destroy();
-      const ctx = this.$refs.chart;
-      this.chart = new Chart(ctx, {
+      if (charts[this.chartId]) {
+        this.updateChart(plotted);
+      } else {
+        this.newChart(plotted);
+      }
+    },
+    updateChart({ chartData, chartTitle }) {
+      const chart = charts[this.chartId];
+      chart.clear();
+      chart.destroy();
+      this.newChart({ chartData, chartTitle });
+    },
+    newChart({ chartData, chartTitle }) {
+      const { mini, plotter, chartId } = this;
+      const ctx = document.getElementById(chartId);
+      console.log('drawing on canvas', ctx);
+      const newChart = new Chart(ctx, {
         type: 'line',
         data: chartData,
         options: {
@@ -126,6 +142,7 @@ export default {
           },
         ],
       });
+      charts[chartId] = newChart;
     },
     async exportChart() {
       this.pictureMode = true;
@@ -145,6 +162,12 @@ export default {
     this.exponent = this.plotter.getExponent();
     // if (this.captures) this.drawChart(this.captures);
     // else if (this.captureGroups) this.drawChart(null, this.captureGroups);
+  },
+  beforeUnmount() {
+    if (charts[this.chartId]) {
+      charts[this.chartId].destroy();
+      charts[this.chartId] = null;
+    }
   },
 };
 </script>
