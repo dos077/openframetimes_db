@@ -2,12 +2,12 @@ import { metaKeys } from './runKeys';
 
 const resOptions = ['720p', '1080p', '1440p', 'WQHD', '4K'];
 const presetOptions = ['low', 'medium', 'high', 'ultra'];
-const upscaleOptions = ['quality', 'balanced', 'performance'];
+const upscaleOptions = ['quality', 'balance', 'performance'];
 
 const interpretComment = (comment) => {
   const data = {};
-  comment.split(' ').forEach((tString) => {
-    const term = tString.toLowerCase();
+  const terms = comment.split(' ').map((str) => str.toLowerCase());
+  terms.forEach((term) => {
     resOptions.forEach((res) => {
       if (term.includes(res.toLocaleLowerCase())) data.resolution = res;
     });
@@ -17,22 +17,18 @@ const interpretComment = (comment) => {
     let upscale = false;
     if (term.includes('fsr-')) {
       upscale = 'FSR';
-      data.DLSS = 'off';
     } else if (term.includes('dlss-')) {
       upscale = 'DLSS';
-      data.FSR = 'off';
-    } else {
-      data.DLSS = 'off';
-      data.FSR = 'off';
     }
     if (upscale) {
-      let upPreset = 'off';
+      let upPreset = null;
       upscaleOptions.forEach((op) => {
         if (term.includes(op)) upPreset = op;
       });
-      data[upscale] = upPreset;
+      if (upPreset) data.upscale = `${upscale}-${upPreset}`;
     }
   });
+  if (!data.upscale) data.upscale = 'off';
   return data;
 };
 
@@ -87,13 +83,13 @@ const readCapture = async (file) => new Promise((resolve, reject) => {
   fileReader.readAsText(file);
 });
 
-const compareCapture = (a, b) => metaKeys
+const compareCapture = (a, b, refKeys) => refKeys
   .every((key) => (!a[key] && !b[key]) || a[key] === b[key]);
 
-const groupCaptures = (captures) => {
+const groupCaptures = (captures, refKeys = metaKeys) => {
   const groups = [captures[0]];
   captures.slice(1).forEach((b) => {
-    const matched = groups.find((a) => compareCapture(a, b));
+    const matched = groups.find((a) => compareCapture(a, b, refKeys));
     if (matched && matched.frameTimes) {
       matched.frameTimes.push(...b.frameTimes);
     } else {

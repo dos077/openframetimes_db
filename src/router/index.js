@@ -20,6 +20,11 @@ const routes = [
     name: 'admin',
     component: () => import(/* webpackChunkName: "admin" */ '../views/AdminView.vue'),
   },
+  {
+    path: '/playground',
+    name: 'playground',
+    component: () => import(/* webpackChunkName: "playground" */ '../views/PlayGround.vue'),
+  },
 ];
 
 const router = createRouter({

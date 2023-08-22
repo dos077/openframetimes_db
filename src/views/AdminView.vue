@@ -1,22 +1,47 @@
 <template>
-  <q-btn @click="adminUpdate()">update</q-btn>
-  <q-btn @click="addUpscaleOff('DLSS')">add off</q-btn>
+  <q-table
+    :columns="tableCols"
+    :rows="updateLogs"
+    row-key="id"
+    :pagination="{ rowsPerPage: 20 }"
+    selection="multiple"
+    v-model:selected="logsSelected"
+  >
+    <template v-slot:top>
+      <q-toolbar>
+        <q-btn  v-if="updateLogs.length > 0"
+          @click="adminUpdate()">update all</q-btn>
+        <q-btn v-if="logsSelected.length > 0"
+          color="red" @click="adminReject">
+          reject updates
+        </q-btn>
+      </q-toolbar>
+    </template>
+
+  </q-table>
 </template>
 
 <script>
-import firebase from '@/firebase';
+const labels = [
+  'type', 'gameName', 'CPU', 'GPU', 'resolution', 'gamePreset', 'upscale',
+];
 
-const ids2Arr = (ids, addArr) => {
-  ids.forEach((id) => {
-    if (!addArr.includes(id)) addArr.push(id);
-  });
-};
+const tableCols = labels.map((label) => ({
+  label, field: label, align: 'left',
+}));
 
 export default {
   name: 'AdminView',
+  data: () => ({
+    tableCols,
+    logsSelected: [],
+  }),
   computed: {
     metaPool() {
       return this.$store.state.metas.metas;
+    },
+    updateLogs() {
+      return this.$store.state.admin.logs;
     },
     runs() {
       return this.$store.state.chart.captures;
@@ -24,45 +49,18 @@ export default {
   },
   methods: {
     adminUpdate() {
-      this.$store.dispatch('adminUpdate');
+      this.$store.dispatch('admin/adminUpdate');
     },
-    async updateUpscaleOff(upType, ids) {
-      const promises = [];
-      for (let i = 0; i < ids.length; i += 1) {
-        promises.push((async () => {
-          const run = await firebase.runStore.get(ids[i]);
-          if (!run[upType]) {
-            run[upType] = 'off';
-            console.log('reupping run', run);
-            await firebase.runStore.remove(run);
-            await firebase.runStore.add(run);
-          }
-        })());
-      }
-      await Promise.all(promises);
-    },
-    addUpscaleOff(upscaleType) {
-      const { metaPool } = this;
-      const offs = [];
-      const ons = [];
-      metaPool.forEach(({ runs, type }) => {
-        const ids = runs.map((r) => r.runId);
-        if (type === upscaleType) {
-          ids2Arr(ids, ons);
-          ids2Arr(ids, offs);
-        } else {
-          ids2Arr(ids, offs);
-        }
-      });
-      const ids = offs.filter((id) => !ons.includes(id));
-      console.log(ids.length);
-      this.updateUpscaleOff(upscaleType, ids.slice(0, 1));
+    adminReject() {
+      const logs = this.logsSelected;
+      this.$store.dispatch('admin/rejectLogs', logs);
     },
   },
   mounted() {
     if (!this.metas || this.metas.length === 0) {
       this.$store.dispatch('metas/loadMetas');
     }
+    this.$store.dispatch('admin/loadLogs');
   },
 };
 </script>

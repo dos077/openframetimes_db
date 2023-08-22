@@ -3,6 +3,7 @@ import firebase from '@/firebase';
 import currentUser from './currentUser';
 import metaStorge from './metas';
 import mainChart from './mainChart';
+import adminStore from './admin';
 
 const store = createStore({
   state: {
@@ -16,13 +17,11 @@ const store = createStore({
   },
   actions: {
     ...currentUser.actions,
-    async adminUpdate() {
-      await firebase.adminStore.processLogs();
-    },
   },
   modules: {
     metas: metaStorge,
     chart: mainChart,
+    admin: adminStore,
   },
 });
 

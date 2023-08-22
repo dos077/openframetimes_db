@@ -12,19 +12,12 @@
       <file-uploader @newPreview="setPreview"
         @formValidated="setFormReady(true)"
         @formError="setFormReady(false)"
+        :loading="loading"
+        @newUpload="addRun"
       />
       <q-card-section v-if="previewCapture">
         <simple-chart :captures="[previewCapture]" />
       </q-card-section>
-      <q-card-actions>
-        <q-btn
-          color="blue-8"
-          :disable="loading || !captureReady" @click="addRun"
-          outline
-        >
-          upload
-        </q-btn>
-      </q-card-actions>
     </q-card>
   </div>
 </template>
@@ -64,13 +57,12 @@ export default {
   },
   methods: {
     setPreview(newPreview) {
-      console.log('new preview capture');
       this.previewCapture = newPreview;
     },
-    async addRun() {
-      if (!this.isFormReady) return;
+    async addRun(previewCapture) {
+      // if (!this.isFormReady) return;
       this.loading = true;
-      const { previewCapture } = this;
+      console.log('preparing preview for uploadt', previewCapture);
       if (!previewCapture || !previewCapture.frameTimes) return;
       if (requiredKeys.some((key) => !previewCapture[key])) return;
       const runData = { frameTimes: previewCapture.frameTimes };

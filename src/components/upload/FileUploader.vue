@@ -1,6 +1,6 @@
 <template>
   <q-card flat>
-    <q-list v-if="mini && parsed">
+    <q-list v-if="mini && currentFile">
       <q-item v-for="([type, name]) in Object.entries(metaPicks)" :key="type">
         <q-item-section>
           <q-item-label>{{ type }}</q-item-label>
@@ -13,12 +13,12 @@
       </q-item>
     </q-list>
     <q-card-section v-if="!mini">
-      <q-file v-model="localFile" label="frametime capture json"
-        clearable/>
+      <q-file v-model="localFiles" label="frametime capture json"
+        clearable :max-files="10" multiple />
     </q-card-section>
-    <q-card-section v-if="!mini && parsed">
+    <q-card-section v-if="!mini && currentFile">
       <q-form class="row q-col-gutter-sm">
-        <q-input v-model="comment" label="comment" readonly
+        <q-input v-model="comment" label="comment" clearable
           class="col-6"
         />
         <q-input v-model="gameName" label="game" readonly
@@ -26,44 +26,60 @@
           error-message="game name required"
           :error="!isNameValid"
           />
-        <q-input v-model="CPU" label="CPU" :disable="!localFile" readonly
+        <q-input v-model="CPU" label="CPU" :disable="!currentFile" readonly
           class="col-6"
           error-message="CPU required"
           :error="!isCPUValid"/>
-        <q-input v-model="GPU" label="GPU" :disable="!localFile" readonly
+        <q-input v-model="GPU" label="GPU" :disable="!currentFile" readonly
           class="col-6"
           error-message="GPU required"
           :error="!isGPUValid"/>
-        <q-input v-model="RAM" label="RAM" :disable="!localFile" readonly
+        <q-input v-model="RAM" label="RAM" :disable="!currentFile" readonly
           class="col-6"
           error-message="RAM required"
           :error="!isRAMValid"/>
         <q-select v-model="resolution" :options="resOptions"
           label="resolution"
-          :disable="!localFile"
+          :disable="!currentFile"
           class="col-6"
           error-message="invalid resolution"
           :error="!isResValid"/>
         <q-select v-model="gamePreset" :options="presetOptions"
           label="preset"
-          :disable="!localFile"
+          :disable="!currentFile"
           class="col-6"
           error-message="invalid game preset"
           :error="!isPresetValid"/>
-        <q-select v-model="FSR" :options="upscaleOptions"
-          label="FSR"
-          :disable="!localFile"
+        <q-select v-model="upscale" :options="upscaleOptions"
+          label="upscale"
+          :disable="!currentFile"
           class="col-6"
-          error-message="invalid FSR preset"
-          :error="!isFSRValid"/>
-        <q-select v-model="DLSS" :options="upscaleOptions"
-          label="DLSS"
-          :disable="!localFile"
-          class="col-6"
-          error-message="invalid DLSS preset"
-          :error="!isDLSSValid"/>
+          error-message="invalid upscale preset"
+          :error="!isUpscaleValid"/>
       </q-form>
     </q-card-section>
+    <q-card-section v-if="previewCapture">
+      <q-form class="row q-col-gutter-sm">
+        <q-input :model-value="currentFile" readonly clearable
+          class="col-6" :label="'1/' + localFiles.length"
+        >
+          <template v-slot:append>
+            <q-btn flat round icon="mdi-close-circle"
+              @click="localFiles = localFiles.slice(1)" />
+          </template>
+        </q-input>
+      </q-form>
+      <simple-chart :captures="[previewCapture]" :mini="true" />
+    </q-card-section>
+    <q-card-actions v-if="currentFile">
+      <q-btn @click="confirm"
+        color="blue-8"
+        :disable="loading || !captureReady"
+        outline
+      >
+        confirm
+      </q-btn>
+    </q-card-actions>
   </q-card>
 </template>
 
@@ -71,16 +87,31 @@
 import { mapState } from 'vuex';
 import { parseCapture, readCapture } from '@/data/parseCapture';
 import { requiredKeys, optionalKeys } from '@/data/runKeys';
+import SimpleChart from '../SimpleChart.vue';
 
-const validationKeys = ['Name', 'CPU', 'GPU', 'RAM', 'Res', 'Preset', 'FSR', 'DLSS']
+const validationKeys = ['Name', 'CPU', 'GPU', 'RAM', 'Res', 'Preset', 'Upscale']
   .map((key) => `is${key}Valid`);
+
+const types = ['FSR', 'DLSS'];
+const options = ['quality', 'balance', 'performance'];
+
+const upOps = [];
+
+types.forEach((type) => {
+  options.forEach((op) => {
+    upOps.push(`${type}-${op}`);
+  });
+});
 
 export default {
   name: 'FileUploader',
-  props: ['mini'],
+  components: {
+    SimpleChart,
+  },
+  props: ['mini', 'loading'],
   data: () => ({
     localFile: null,
-    loading: false,
+    localFiles: null,
     CPU: null,
     GPU: null,
     RAM: null,
@@ -90,14 +121,16 @@ export default {
     syncCapOptions: [null, 40, 60, 120, 144, 165],
     gamePreset: null,
     presetOptions: ['low', 'medium', 'high', 'ultra'],
-    FSR: null,
-    DLSS: null,
-    upscaleOptions: ['off', 'quality', 'balanced', 'performance'],
+    upscale: 'off',
+    upscaleOptions: ['off', ...upOps],
     comment: null,
     gameName: null,
     parsed: null,
     creationDate: null,
     driver: null,
+    previewCapture: null,
+    currentFile: null,
+    captureReady: false,
   }),
   computed: {
     ...mapState(['currentUser', 'userRuns']),
@@ -131,18 +164,15 @@ export default {
       const { gamePreset, presetOptions } = this;
       return presetOptions.includes(gamePreset);
     },
-    isFSRValid() {
-      const { FSR, upscaleOptions } = this;
-      return upscaleOptions.includes(FSR);
-    },
-    isDLSSValid() {
-      const { DLSS, upscaleOptions } = this;
-      return upscaleOptions.includes(DLSS);
+    isUpscaleValid() {
+      const { upscale, upscaleOptions } = this;
+      return upscaleOptions.includes(upscale);
     },
   },
   watch: {
     async localFile(newFile) {
       if (newFile) {
+        console.log('reading new file');
         const rawData = await readCapture(newFile);
         this.parsed = parseCapture(rawData);
       } else {
@@ -151,7 +181,7 @@ export default {
     },
     parsed(newParsed) {
       if (newParsed && newParsed.info) {
-        ['comment', ...requiredKeys, ...optionalKeys].forEach((key) => {
+        [...requiredKeys, ...optionalKeys].forEach((key) => {
           if (newParsed.info[key]) this[key] = newParsed.info[key];
           else this[key] = null;
         });
@@ -160,17 +190,55 @@ export default {
         this.$emit('newPreview', null);
       }
     },
+    async localFiles(newFiles) {
+      let parsed = null;
+      if (newFiles) {
+        if (newFiles.length > 0) {
+          const rawData = await readCapture(newFiles[0]);
+          this.currentFile = newFiles[0].name;
+          parsed = parseCapture(rawData);
+        } else this.currentFile = null;
+      }
+      if (parsed && parsed.info) {
+        [...requiredKeys, ...optionalKeys].forEach((key) => {
+          if (parsed.info[key]) this[key] = parsed.info[key];
+          else this[key] = null;
+        });
+        this.setPreview(parsed);
+      } else this.previewCapture = null;
+    },
     userRuns() {
       this.localFile = null;
     },
   },
   methods: {
+    setPreview(parsed) {
+      const {
+        CPU, GPU, RAM, resolution, gamePreset, upscale, gameName, syncCap, comment,
+      } = this;
+      const userId = this.currentUser ? this.currentUser.uid : null;
+      const captureData = {
+        userId,
+        CPU,
+        GPU,
+        RAM,
+        resolution,
+        syncCap,
+        gameName,
+        gamePreset,
+        upscale,
+        comment,
+        frameTimes: parsed.frameTimes,
+      };
+      this.previewCapture = captureData;
+    },
     sendPreview() {
       const {
-        parsed, CPU, GPU, RAM, resolution, gamePreset, FSR, DLSS, gameName, syncCap,
+        parsed, CPU, GPU, RAM, resolution, gamePreset, upscale, gameName, syncCap, comment,
       } = this;
       if (!parsed) this.$emit('newPreview', null);
       else {
+        console.log('sending preview');
         const userId = this.currentUser ? this.currentUser.uid : null;
         const captureData = {
           userId,
@@ -181,8 +249,8 @@ export default {
           syncCap,
           gameName,
           gamePreset,
-          FSR: FSR ? `FSR-${FSR}` : null,
-          DLSS: DLSS ? `DLSS-${DLSS}` : null,
+          upscale,
+          comment,
           frameTimes: parsed.frameTimes,
         };
         this.$emit('newPreview', captureData);
@@ -191,20 +259,44 @@ export default {
     validateKeys(key, newVal) {
       if (!newVal) {
         this.$emit('formError');
+        this.captureReady = false;
         return;
       }
       const otherKeys = validationKeys.filter((k) => k !== key);
       const isOtherValid = otherKeys.every((k) => this[k]);
       if (!isOtherValid) {
         this.$emit('formError');
+        this.captureReady = false;
         return;
       }
-      console.log('form valid');
       this.sendPreview();
       this.$emit('formValidated');
+      this.captureReady = true;
     },
     testInvalid() {
       this.gamePreset = null;
+    },
+    confirm() {
+      if (this.loading) throw Error('loading');
+      const {
+        previewCapture, CPU, GPU, RAM, resolution, gamePreset, upscale, gameName, syncCap, comment,
+      } = this;
+      const userId = this.currentUser ? this.currentUser.uid : null;
+      const captureData = {
+        userId,
+        CPU,
+        GPU,
+        RAM,
+        resolution,
+        syncCap,
+        gameName,
+        gamePreset,
+        upscale,
+        comment,
+        frameTimes: previewCapture.frameTimes,
+      };
+      this.$emit('newUpload', captureData);
+      this.localFiles = this.localFiles.slice(1);
     },
   },
   created() {

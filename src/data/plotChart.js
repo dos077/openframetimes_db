@@ -1,6 +1,7 @@
 import { metaKeys } from './runKeys';
 
 const threshHolds = [
+  { fps: 240, ms: 4.17 },
   { fps: 120, ms: 8.34 },
   { fps: 90, ms: 11.12 },
   { fps: 72, ms: 13.89 },
@@ -17,40 +18,53 @@ const remapKeys = {
   DLSS: (val) => `DLSS-${val}`,
 };
 
-const parseFrameTime = (frameTimes) => {
-  const fts = [];
+const frameTimesCompliance = (frameTimes, threshHold) => {
+  let tIndex = 0;
+  let frameTime = frameTimes[0];
+  let frame = 1;
+  let onTime = 0;
+  const { fps } = threshHold;
+  while (tIndex < frameTimes.length) {
+    const target = frame / fps;
+    if (frameTime < target) onTime += 1;
+    while (frameTime < target) {
+      tIndex += 1;
+      if (tIndex >= frameTimes.length) break;
+      frameTime += frameTimes[tIndex];
+    }
+    frame += 1;
+  }
+  return onTime / (frame - 1);
+};
+/*
+const framesOnTimes = (frameTimes, threshHold) => {
+  const { ms } = threshHold;
+  let onTime = 0;
+  let total = 0;
   frameTimes.forEach((delta) => {
-    fts.push(Math.round(delta * 100000) / 100);
+    total += delta;
+    if (delta < ms) onTime += delta;
   });
+  return onTime / total;
+}; */
+
+const parseFrameTime = (frameTimes) => {
   const groups = threshHolds.map((threshHold) => ({
     threshHold,
-    frames: [],
+    compliance: frameTimesCompliance(frameTimes, threshHold),
   }));
-  fts.forEach((ft) => {
-    for (let i = 0; i < threshHolds.length; i += 1) {
-      const threshHold = threshHolds[i];
-      if (ft <= threshHold.ms) {
-        groups[i].frames.push(ft);
-        break;
-      }
-    }
-  });
-  return {
-    totalFrames: fts.length,
-    totalTime: fts.reduce((a, b) => a + b),
-    groups,
-  };
+  return groups;
 };
 
 const labels = threshHolds.map(({ fps }) => fps).reverse();
 
-const getSharedKeys = (captures) => {
+const getSharedKeys = (captures, refKeys) => {
   if (!captures || captures.length < 2) return null;
-  const shared = metaKeys
+  const shared = refKeys
     .filter((key) => captures.some((c) => c[key])
       && captures.slice(1).every((c, i) => c[key] === captures[i][key]));
   return {
-    shared, different: metaKeys.filter((key) => !shared.includes(key)),
+    shared, different: refKeys.filter((key) => !shared.includes(key)),
   };
 };
 
@@ -88,30 +102,25 @@ const plotGroups = (captures) => {
 }; */
 
 const Plotter = () => {
+  let refKeys = metaKeys;
   let exponent = 2;
+
+  const setRefKeys = (newKeys) => { if (newKeys) refKeys = newKeys; };
 
   const getExponent = () => exponent;
   const setExponent = (newEx) => { exponent = newEx; };
 
   const plotChart = (capture) => {
     const { frameTimes } = capture;
-    const { totalTime, groups } = parseFrameTime(frameTimes);
-    const dataset = [];
-    let tSum = 0;
-    for (let i = 0; i < groups.length; i += 1) {
-      const { frames } = groups[i];
-      if (frames && frames.length) {
-        tSum += frames.reduce((a, b) => a + b);
-      }
-      const base = (tSum / totalTime) ** exponent;
-      dataset.push(10 ** base - 1);
-    }
+    const groups = parseFrameTime(frameTimes);
+    const dataset = groups
+      .map(({ compliance }) => 10 ** (compliance ** exponent) - 1);
     return {
-      chartTitle: metaKeys.slice(0, 3).map((key) => capture[key]).join(', '),
+      chartTitle: refKeys.slice(0, 3).map((key) => capture[key]).join(', '),
       chartData: {
         labels,
         datasets: [{
-          label: metaKeys.slice(3).filter((k) => capture[k]).map((k) => capture[k]).join('|'),
+          label: refKeys.slice(3).filter((k) => capture[k]).map((k) => capture[k]).join('|'),
           data: dataset.reverse(),
           lineTension: 0.2,
         }],
@@ -122,20 +131,13 @@ const Plotter = () => {
   const plotMulti = (captures, colors) => {
     if (captures.length === 1) return plotChart(captures[0]);
     const datasets = [];
-    const keys = getSharedKeys(captures);
+    const keys = getSharedKeys(captures, refKeys);
+    console.log('plotting with keys', keys);
     captures.forEach((capture, cIndex) => {
       const { frameTimes } = capture;
-      const { totalTime, groups } = parseFrameTime(frameTimes);
-      const dataset = [];
-      let tSum = 0;
-      for (let i = 0; i < groups.length; i += 1) {
-        const { frames } = groups[i];
-        if (frames && frames.length) {
-          tSum += frames.reduce((a, b) => a + b);
-        }
-        const base = (tSum / totalTime) ** exponent;
-        dataset.push(10 ** base - 1);
-      }
+      const groups = parseFrameTime(frameTimes);
+      const dataset = groups
+        .map(({ compliance }) => 10 ** (compliance ** exponent) - 1);
       datasets.push({
         label: keys.different
           .filter((key) => capture[key])
@@ -163,13 +165,12 @@ const Plotter = () => {
       captures.push(...group);
       if (mainColors) colors.push(...getColors(mainColors[i], group.length));
     });
-    console.log('plotting with colors', colors);
     return plotMulti(captures, colors.length ? colors : undefined);
   };
 
   return {
-    plotMulti, plotChart, plotGroups, getExponent, setExponent,
+    plotMulti, plotChart, plotGroups, getExponent, setExponent, setRefKeys,
   };
 };
 
-export default Plotter();
+export default Plotter;

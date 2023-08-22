@@ -80,18 +80,41 @@ const adminStore = (db) => {
     await Promise.all(promises);
   };
 
+  const getLogs = async () => {
+    try {
+      const logsRef = collection(db, 'logs');
+      const q = query(logsRef, orderBy('created'));
+      const logSnaps = await getDocs(q);
+      const logs = [];
+      for (let i = 0; i < logSnaps.docs.length; i += 1) {
+        const metaDoc = logSnaps.docs[i];
+        const data = metaDoc.data();
+        data.id = metaDoc.id;
+        logs.push(data);
+      }
+      return logs;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  };
+
   const processLogs = async () => {
-    const logsRef = collection(db, 'logs');
-    const q = query(logsRef, orderBy('created'));
-    const logSnaps = await getDocs(q);
-    for (let i = 0; i < logSnaps.docs.length; i += 1) {
-      const metaDoc = logSnaps.docs[i];
-      await processUpdate(metaDoc.data());
+    const logs = await getLogs();
+    for (let i = 0; i < logs.length; i += 1) {
+      const metaDoc = logs[i];
+      await processUpdate(metaDoc);
       await deleteDoc(doc(db, 'logs', metaDoc.id));
     }
   };
 
-  return { processLogs, addMeta, removeMeta };
+  const deleteLog = async (logId) => {
+    await deleteDoc(doc(db, 'logs', logId));
+  };
+
+  return {
+    processLogs, addMeta, removeMeta, getLogs, deleteLog,
+  };
 };
 
 export default adminStore;

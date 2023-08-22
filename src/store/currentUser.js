@@ -34,6 +34,7 @@ const actions = {
     context.dispatch('logOut');
   },
   async addRun(context, run) {
+    console.log('adding run', run);
     const { uid } = context.state.currentUser;
     await firebase.runStore.add({ ...run, userId: uid });
     context.dispatch('loadUserRuns');
