@@ -70,7 +70,7 @@
 import { metaKeys } from '@/data/runKeys';
 import SimpleChart from '@/components/SimpleChart.vue';
 
-const tableCols = metaKeys
+const tableCols = [...metaKeys, 'comment']
   .map((key) => ({
     label: key,
     field: key,
