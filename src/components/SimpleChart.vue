@@ -71,6 +71,7 @@ export default {
       } else {
         return;
       }
+      console.log('plotting new chart', plotted);
       if (charts[this.chartId]) {
         this.updateChart(plotted);
       } else {

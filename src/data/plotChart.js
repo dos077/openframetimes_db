@@ -17,8 +17,8 @@ const remapKeys = {
   FSR: (val) => `FSR-${val}`,
   DLSS: (val) => `DLSS-${val}`,
 };
-
-const frameTimesCompliance = (frameTimes, threshHold) => {
+/*
+const frameTimesCompliancOld = (frameTimes, threshHold) => {
   let tIndex = 0;
   let frameTime = frameTimes[0];
   let frame = 1;
@@ -35,7 +35,27 @@ const frameTimesCompliance = (frameTimes, threshHold) => {
     frame += 1;
   }
   return onTime / (frame - 1);
+}; */
+
+const frameTimesCompliance = (frameTimes, threshHold) => {
+  const sDelta = 1 / threshHold.fps;
+  let hit = 0;
+  let miss = 0;
+  let time = 0;
+  for (let i = 0; i < frameTimes.length; i += 1) {
+    time += frameTimes[i];
+    if (time > 0) {
+      while (time > sDelta) {
+        miss += 1;
+        time -= sDelta;
+      }
+      hit += 1;
+      time -= sDelta;
+    }
+  }
+  return hit / (hit + miss);
 };
+
 /*
 const framesOnTimes = (frameTimes, threshHold) => {
   const { ms } = threshHold;

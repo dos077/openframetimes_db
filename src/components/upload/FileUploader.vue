@@ -90,7 +90,7 @@
 
 <script>
 import { mapState } from 'vuex';
-import { parseCapture, readCapture } from '@/data/parseCapture';
+import { readParse } from '@/data/parseCapture';
 import { requiredKeys, optionalKeys } from '@/data/runKeys';
 import SimpleChart from '../SimpleChart.vue';
 
@@ -178,8 +178,8 @@ export default {
     async localFile(newFile) {
       if (newFile) {
         console.log('reading new file');
-        const rawData = await readCapture(newFile);
-        this.parsed = parseCapture(rawData);
+        const newParsed = await readParse(newFile);
+        this.parsed = newParsed;
       } else {
         this.parsed = null;
       }
@@ -199,9 +199,8 @@ export default {
       let parsed = null;
       if (newFiles) {
         if (newFiles.length > 0) {
-          const rawData = await readCapture(newFiles[0]);
           this.currentFile = newFiles[0].name;
-          parsed = parseCapture(rawData);
+          parsed = await readParse(newFiles[0]);
         } else this.currentFile = null;
       }
       if (parsed && parsed.info) {
@@ -209,6 +208,7 @@ export default {
           if (parsed.info[key]) this[key] = parsed.info[key];
           else this[key] = null;
         });
+        console.log('sending preview', parsed);
         this.setPreview(parsed);
       } else this.previewCapture = null;
     },
@@ -226,7 +226,6 @@ export default {
       } = this;
       if (!parsed) this.$emit('newPreview', null);
       else {
-        console.log('sending preview');
         const userId = this.currentUser ? this.currentUser.uid : null;
         const captureData = {
           userId,
@@ -241,7 +240,8 @@ export default {
           comment,
           frameTimes: parsed.frameTimes,
         };
-        this.$emit('newPreview', captureData);
+        console.log('sending preview', captureData);
+        // this.$emit('newPreview', captureData);
       }
     },
     validateKeys(key, newVal) {

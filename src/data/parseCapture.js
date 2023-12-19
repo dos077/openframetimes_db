@@ -1,4 +1,7 @@
 import { metaKeys } from './runKeys';
+import { trimFrameTimes } from './helpers';
+import CapFrameX from './capFrameX';
+import Mangohud from './mangohud';
 
 const resOptions = ['720p', '1080p', '1440p', 'WQHD', '4K'];
 const presetOptions = ['low', 'medium', 'high', 'ultra'];
@@ -30,16 +33,6 @@ const interpretComment = (comment) => {
   });
   if (!data.upscale) data.upscale = 'off';
   return data;
-};
-
-const trimFrameTimes = (frameTimes, frameLimit = 2024) => {
-  if (frameTimes.length <= frameLimit) return frameTimes;
-  const newTimes = [...frameTimes];
-  while (newTimes.length > frameLimit) {
-    const cutIndex = Math.round(newTimes.length * Math.random());
-    newTimes.splice(cutIndex, 100);
-  }
-  return newTimes;
 };
 
 const parseCapFrameX = ({ Info, Runs }) => {
@@ -83,6 +76,26 @@ const readCapture = async (file) => new Promise((resolve, reject) => {
   fileReader.readAsText(file);
 });
 
+const readRaw = async (file) => new Promise((resolve, reject) => {
+  const fileReader = new FileReader();
+  fileReader.onload = (event) => resolve(event.target.result);
+  fileReader.onerror = (error) => reject(error);
+  fileReader.readAsText(file);
+});
+
+const readParse = async (file) => {
+  const isExt = CapFrameX.checkExt(file) || Mangohud.checkExt(file);
+  if (!isExt) return false;
+  const rawData = await readRaw(file);
+  if (CapFrameX.checkExt(file) && CapFrameX.isCapture(rawData)) {
+    return CapFrameX.parseCapture(rawData);
+  }
+  if (Mangohud.checkExt(file) && Mangohud.isCapture(rawData)) {
+    return Mangohud.parseCapture(rawData, file.name);
+  }
+  return false;
+};
+
 const compareCapture = (a, b, refKeys) => refKeys
   .every((key) => (!a[key] && !b[key]) || a[key] === b[key]);
 
@@ -105,4 +118,6 @@ const groupCaptures = (captures, refKeys = metaKeys) => {
   return sortedGroups;
 };
 
-export { parseCapture, readCapture, groupCaptures };
+export {
+  parseCapture, readCapture, groupCaptures, trimFrameTimes, readParse,
+};
