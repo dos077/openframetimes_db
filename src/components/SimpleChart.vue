@@ -149,7 +149,7 @@ export default {
       this.pictureMode = true;
       // eslint-disable-next-line no-promise-executor-return
       await new Promise((r) => setTimeout(r, 200));
-      const canvas = this.$refs.chart;
+      const canvas = document.getElementById(this.chartId);
       const image = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
       const element = document.createElement('a');
       const filename = 'frameTimes.png';

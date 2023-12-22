@@ -14,12 +14,20 @@ const isCapture = (raw) => {
 const interpretComment = (comment) => {
   const data = {};
   const terms = comment.split(' ').map((str) => str.toLowerCase());
+  const leftOvers = [];
   terms.forEach((term) => {
+    let isLeftOver = true;
     resOptions.forEach((res) => {
-      if (term.includes(res.toLocaleLowerCase())) data.resolution = res;
+      if (term.includes(res.toLocaleLowerCase())) {
+        data.resolution = res;
+        isLeftOver = false;
+      }
     });
     presetOptions.forEach((preset) => {
-      if (term.includes(preset.toLocaleLowerCase())) data.gamePreset = preset;
+      if (term.includes(preset.toLocaleLowerCase())) {
+        data.gamePreset = preset;
+        isLeftOver = false;
+      }
     });
     let upscale = false;
     if (term.includes('fsr-')) {
@@ -28,15 +36,18 @@ const interpretComment = (comment) => {
       upscale = 'DLSS';
     }
     if (upscale) {
+      isLeftOver = false;
       let upPreset = null;
       upscaleOptions.forEach((op) => {
         if (term.includes(op)) upPreset = op;
       });
       if (upPreset) data.upscale = `${upscale}-${upPreset}`;
     }
+    if (isLeftOver) leftOvers.push(term);
   });
   if (!data.upscale) data.upscale = 'off';
-  return data;
+  console.log('left over comment', leftOvers);
+  return { data, newComment: leftOvers.join(' ') };
 };
 
 const parseCapture = (raw) => {
@@ -50,6 +61,7 @@ const parseCapture = (raw) => {
       frameTimes.push(t - run.CaptureData.TimeInSeconds[i]);
     });
   });
+  const commentData = interpretComment(Comment);
   return {
     info: {
       CPU: Processor,
@@ -58,9 +70,9 @@ const parseCapture = (raw) => {
       OS,
       RAM: SystemRam,
       GPU,
-      comment: Comment,
+      comment: commentData.newComment,
       driver: GPUDriverVersion,
-      ...interpretComment(Comment),
+      ...commentData.data,
     },
     frameTimes: trimFrameTimes(frameTimes),
   };
