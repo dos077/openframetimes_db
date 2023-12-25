@@ -21,6 +21,13 @@ export default {
   data: () => ({
     drawerOn: false,
   }),
+  created() {
+    if (sessionStorage.redirect) {
+      const { redirect } = sessionStorage;
+      delete sessionStorage.redirect;
+      this.$router.push(redirect);
+    }
+  },
 };
 </script>
 
