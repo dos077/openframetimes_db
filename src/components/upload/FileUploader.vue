@@ -14,7 +14,7 @@
     </q-list>
     <q-card-section v-if="!mini">
       <q-file v-model="localFiles" label="frametime capture json"
-        clearable :max-files="10" multiple />
+        clearable :max-files="25" multiple />
     </q-card-section>
     <q-card-section v-if="!mini && currentFile">
       <q-form class="row q-col-gutter-sm">
