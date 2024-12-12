@@ -121,6 +121,11 @@ const plotGroups = (captures) => {
   return plotMulti(sortedGroups);
 }; */
 
+const mapValY = (y) => {
+  if (y > 0.998) return 9;
+  return Math.log(1 - y) / Math.log(0.5);
+};
+
 const Plotter = () => {
   let refKeys = metaKeys;
   let exponent = 2;
@@ -134,7 +139,7 @@ const Plotter = () => {
     const { frameTimes } = capture;
     const groups = parseFrameTime(frameTimes);
     const dataset = groups
-      .map(({ compliance }) => 10 ** (compliance ** exponent) - 1);
+      .map(({ compliance }) => mapValY(compliance));
     return {
       chartTitle: refKeys.slice(0, 3).map((key) => capture[key]).join(', '),
       chartData: {
@@ -157,7 +162,7 @@ const Plotter = () => {
       const { frameTimes } = capture;
       const groups = parseFrameTime(frameTimes);
       const dataset = groups
-        .map(({ compliance }) => 10 ** (compliance ** exponent) - 1);
+        .map(({ compliance }) => mapValY(compliance));
       datasets.push({
         label: keys.different
           .filter((key) => capture[key])

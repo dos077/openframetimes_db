@@ -5,8 +5,6 @@
     </q-card-section>
     <q-separator />
     <q-card-actions v-if="!mini">
-      <span class="text-overline q-mr-md">exponent</span>
-      <q-select :options="expOptions" v-model="exponent" />
       <q-space />
       <q-btn size="md" flat @click="exportChart()">export</q-btn>
     </q-card-actions>
@@ -85,7 +83,7 @@ export default {
       this.newChart({ chartData, chartTitle });
     },
     newChart({ chartData, chartTitle }) {
-      const { mini, plotter, chartId } = this;
+      const { mini, chartId /* plotter */ } = this;
       const ctx = document.getElementById(chartId);
       console.log('drawing on canvas', ctx);
       const newChart = new Chart(ctx, {
@@ -100,9 +98,11 @@ export default {
               display: true,
               ticks: {
                 callback: (val) => {
-                  const exponent = plotter.getExponent();
-                  const deci = (Math.log(val + 1) / Math.log(10)) ** (1 / exponent);
-                  return `${Math.round(deci * 1000) / 10}%`;
+                  // const exponent = plotter.getExponent();
+                  // const deci = (Math.log(val + 1) / Math.log(10)) ** (1 / exponent);
+                  // return `${Math.round(deci * 1000) / 10}%`;
+                  if (val === 9) return 'Max';
+                  return `${Math.round((1 - 0.5 ** val) * 1000) / 10}%`;
                 },
                 beginAtZero: true,
               },
@@ -118,9 +118,8 @@ export default {
               callbacks: {
                 label: (context) => {
                   const val = context.parsed.y;
-                  const exponent = plotter.getExponent();
-                  const deci = (Math.log(val + 1) / Math.log(10)) ** (1 / exponent);
-                  return `${context.dataset.label}, ${Math.round(deci * 10000) / 100}%`;
+                  if (val === 9) return 'Max';
+                  return `${Math.round((1 - 0.5 ** val) * 1000) / 10}%`;
                 },
               },
             },
