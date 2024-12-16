@@ -5,6 +5,8 @@ import { groupCaptures } from '@/data/parseCapture';
 const makeState = () => ({
   captures: [],
   captureGroups: [],
+  chartBase: 0.25,
+  chartMax: 4,
 });
 
 const mutations = {
@@ -13,6 +15,12 @@ const mutations = {
   },
   setGroups(state, captureGroups) {
     state.captureGroups = captureGroups;
+  },
+  setBase(state, base) {
+    state.chartBase = base;
+  },
+  setMax(state, max) {
+    state.chartMax = max;
   },
 };
 

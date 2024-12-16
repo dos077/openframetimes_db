@@ -13,6 +13,15 @@ const threshHolds = [
   { fps: 15, ms: 66.67 },
 ];
 
+const threshHoldsShort = [
+  { fps: 240, ms: 4.17 },
+  { fps: 120, ms: 8.34 },
+  { fps: 60, ms: 16.67 },
+  { fps: 40, ms: 25 },
+  { fps: 30, ms: 33.34 },
+  { fps: 15, ms: 66.67 },
+];
+
 const remapKeys = {
   FSR: (val) => `FSR-${val}`,
   DLSS: (val) => `DLSS-${val}`,
@@ -76,7 +85,17 @@ const parseFrameTime = (frameTimes) => {
   return groups;
 };
 
+const parseFrameTimeShort = (frameTimes) => {
+  const groups = threshHoldsShort.map((threshHold) => ({
+    threshHold,
+    compliance: frameTimesCompliance(frameTimes, threshHold),
+  }));
+  return groups;
+};
+
 const labels = threshHolds.map(({ fps }) => fps).reverse();
+
+const labelsShort = threshHoldsShort.map(({ fps }) => fps).reverse();
 
 const getSharedKeys = (captures, refKeys) => {
   if (!captures || captures.length < 2) return null;
@@ -121,10 +140,13 @@ const plotGroups = (captures) => {
   return plotMulti(sortedGroups);
 }; */
 
-const mapValY = (y) => {
-  if (y > 0.998) return 9;
-  return Math.log(1 - y) / Math.log(0.5);
+const mapValY = ({ y, base, max }) => {
+  if (y >= (1 - base ** max)) return max;
+  return Math.log(1 - y) / Math.log(base);
 };
+
+const defaultBase = 0.5;
+const defaultMax = 9;
 
 const Plotter = () => {
   let refKeys = metaKeys;
@@ -135,15 +157,17 @@ const Plotter = () => {
   const getExponent = () => exponent;
   const setExponent = (newEx) => { exponent = newEx; };
 
-  const plotChart = (capture) => {
+  const plotChart = (capture, base, max) => {
     const { frameTimes } = capture;
-    const groups = parseFrameTime(frameTimes);
+    const groups = max < 6 ? parseFrameTimeShort(frameTimes) : parseFrameTime(frameTimes);
     const dataset = groups
-      .map(({ compliance }) => mapValY(compliance));
+      .map(({ compliance }) => mapValY({
+        y: compliance, base: base || defaultBase, max: max || defaultMax,
+      }));
     return {
       chartTitle: refKeys.slice(0, 3).map((key) => capture[key]).join(', '),
       chartData: {
-        labels,
+        labels: max < 6 ? labelsShort : labels,
         datasets: [{
           label: refKeys.slice(3).filter((k) => capture[k]).map((k) => capture[k]).join('|'),
           data: dataset.reverse(),
@@ -153,16 +177,18 @@ const Plotter = () => {
     };
   };
 
-  const plotMulti = (captures, colors) => {
+  const plotMulti = (captures, colors, base, max) => {
     if (captures.length === 1) return plotChart(captures[0]);
     const datasets = [];
     const keys = getSharedKeys(captures, refKeys);
     console.log('plotting with keys', keys);
     captures.forEach((capture, cIndex) => {
       const { frameTimes } = capture;
-      const groups = parseFrameTime(frameTimes);
+      const groups = max < 6 ? parseFrameTimeShort(frameTimes) : parseFrameTime(frameTimes);
       const dataset = groups
-        .map(({ compliance }) => mapValY(compliance));
+        .map(({ compliance }) => mapValY({
+          y: compliance, base: base || defaultBase, max: max || defaultMax,
+        }));
       datasets.push({
         label: keys.different
           .filter((key) => capture[key])
@@ -174,23 +200,33 @@ const Plotter = () => {
         lineTension: 0.2,
       });
     });
-    const chartTitle = keys.shared.map((key) => captures[0][key]).join(', ');
+    const chartTitle = [];
+    let nextLine = '';
+    keys.shared.forEach((key) => {
+      if (captures[0][key] !== 'off') nextLine = nextLine.concat(captures[0][key], ', ');
+      if (nextLine.length > (max > 5 ? 58 : 24)) {
+        chartTitle.push(nextLine);
+        nextLine = '';
+      }
+    });
+    if (nextLine.length > 0) chartTitle.push(nextLine);
     return {
       chartTitle,
       chartData: {
-        labels, datasets,
+        labels: max < 6 ? labelsShort : labels,
+        datasets,
       },
     };
   };
 
-  const plotGroups = (groups, mainColors) => {
+  const plotGroups = (groups, mainColors, base, max) => {
     const captures = [];
     const colors = [];
     groups.forEach((group, i) => {
       captures.push(...group);
       if (mainColors) colors.push(...getColors(mainColors[i], group.length));
     });
-    return plotMulti(captures, colors.length ? colors : undefined);
+    return plotMulti(captures, colors.length ? colors : undefined, base, max);
   };
 
   return {

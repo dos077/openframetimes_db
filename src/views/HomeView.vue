@@ -7,9 +7,9 @@
             v-if="(captures && captures.length) || (previewGroups && previewGroups.length)"
             :captures="previewGroups ? null : captures" :capture-groups="previewGroups" />
           <q-card v-else flat>
-            <q-card-section>
-              <p>
-                {{ brief }}
+            <q-card-section style="font-size: 14px;">
+              <p v-for="(p, i) in intro" :key="i">
+                {{ p }}
               </p>
             </q-card-section>
           </q-card>
@@ -63,7 +63,11 @@ import { mapState } from 'vuex';
 import RunFilters from '@/components/runs/RunFilters.vue';
 import SimpleChart from '@/components/SimpleChart.vue';
 
-const brief = 'Proof of concept project for measuring game performance with percentage of frames on time. Select datapoints and draw graphs from below.';
+const intro = [
+  'Proof of concept project for measuring game performance with frames on time rather than the tradditional frames per second. The human perception way quicker than once per second, having benchmarks showing an average with sample frequency by the second is meaningless. What we need to measure is display refresh windows are met,',
+  'With plenty of frame time measuring tool in our disposal and computers fast enough to log the data without major hinderance to game rendering, we should move pass the era of frames per seconds. What this project is attempting to do, establishing a refresh window (30, 40, 60 times per second) stack up some randomly sampled frames from a recording to see if what percentage of the refresh window actually refresh with a new frame.',
+  'I have uploaded a sample database with some CapframeX logs. And they can be used for charting below. Code for this web app is on Github.',
+];
 
 export default {
   name: 'HomeView',
@@ -72,7 +76,7 @@ export default {
     SimpleChart,
   },
   data: () => ({
-    brief,
+    intro,
     runPool: [],
     filteredRuns: [],
     filteredRuns2: [],

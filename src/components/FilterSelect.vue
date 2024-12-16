@@ -48,6 +48,10 @@ export default {
     select({ name, type }) {
       this.$store.dispatch('metas/select', { type, name });
     },
+    trimName(name) {
+      if (name.length < 16) return name;
+      return `${name.subString(0, 13)}...`;
+    },
   },
 };
 </script>

@@ -12,13 +12,13 @@
           outline
           :color="getColor(meta)"
         >
-          {{  meta.name  }}
+          {{  trimName(meta.name)  }}
         </q-chip>
         <q-chip v-for="meta in disabledOptions"
           :key="meta.name"
           outline color="grey-5"
         >
-          {{  meta.name  }}
+          {{  trimName(meta.name)  }}
         </q-chip>
       </q-item-label>
     </q-item-section>
@@ -57,6 +57,10 @@ export default {
       if (!this.setColor) return undefined;
       if (name !== this.metaPick) return undefined;
       return `${this.setColor}-7`;
+    },
+    trimName(name) {
+      if (!name || name.length < 21) return name;
+      return `${name.substring(0, 19)}...`;
     },
   },
 };

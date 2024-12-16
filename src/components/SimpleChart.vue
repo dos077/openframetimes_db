@@ -15,7 +15,16 @@
 <script>
 import Chart from 'chart.js/auto';
 import { groupCaptures } from '@/data/parseCapture';
+import { mapState } from 'vuex';
 import Plotter from '../data/plotChart';
+import {
+  makeOptions,
+  setAspect,
+  setScales,
+  setPluginsTitle,
+  setPluginsTooltip,
+  setPluginsBackground,
+} from '../styles/chartOptions';
 
 const mainColors = [
   { r: 57, g: 73, b: 171 },
@@ -35,7 +44,11 @@ export default {
     exponent: null,
     expOptions: [1.25, 1.5, 2, 3, 5],
     chartId: `chart-${(new Date()).getTime()}`,
+    screenWidth: document.documentElement.clientWidth,
   }),
+  computed: {
+    ...mapState('chart', ['chartBase', 'chartMax']),
+  },
   watch: {
     captures(newCaptures) {
       this.drawChart(newCaptures);
@@ -43,13 +56,17 @@ export default {
     captureGroups(newGroups) {
       this.drawChart(null, newGroups);
     },
-    exponent(newExp) {
-      this.plotter.setExponent(newExp);
-      if (this.captures) {
-        this.drawChart(this.captures);
-      } else if (this.captureGroups) {
-        this.drawChart(null, this.captureGroups);
-      }
+    screenWidth: {
+      immediate: true,
+      handler(newVal) {
+        if (newVal > 999) {
+          this.$store.commit('chart/setMax', 9);
+          this.$store.commit('chart/setBase', 0.5);
+        } else {
+          this.$store.commit('chart/setMax', 5);
+          this.$store.commit('chart/setBase', 0.25);
+        }
+      },
     },
     refKeys: {
       immediate: true,
@@ -57,15 +74,36 @@ export default {
         this.plotter.setRefKeys(newKeys);
       },
     },
+    chartBase(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        if (this.captures) {
+          this.drawChart(this.captures);
+        } else if (this.captureGroups) {
+          this.drawChart(null, this.captureGroups);
+        }
+      }
+    },
   },
   methods: {
     drawChart(newCaptures, newGroups) {
-      const { plotter, refKeys } = this;
+      const {
+        plotter, refKeys, chartBase, chartMax,
+      } = this;
       let plotted = null;
       if (newCaptures && newCaptures.length) {
-        plotted = plotter.plotGroups([groupCaptures(newCaptures, refKeys)]);
+        plotted = plotter.plotGroups(
+          [groupCaptures(newCaptures, refKeys)],
+          null,
+          chartBase,
+          chartMax,
+        );
       } else if (newGroups && newGroups.length) {
-        plotted = plotter.plotGroups(newGroups, mainColors);
+        plotted = plotter.plotGroups(
+          newGroups,
+          mainColors,
+          chartBase,
+          chartMax,
+        );
       } else {
         return;
       }
@@ -83,51 +121,21 @@ export default {
       this.newChart({ chartData, chartTitle });
     },
     newChart({ chartData, chartTitle }) {
-      const { mini, chartId /* plotter */ } = this;
+      const {
+        mini, chartId, chartBase, chartMax,
+      } = this;
       const ctx = document.getElementById(chartId);
       console.log('drawing on canvas', ctx);
+      let options = makeOptions();
+      options = setAspect({ options, chartMax });
+      options = setScales({ options, chartBase, chartMax });
+      options = setPluginsTitle({ options, mini, chartTitle });
+      options = setPluginsTooltip({ options, chartBase, chartMax });
+      options = setPluginsBackground({ options, color: '#FFF' });
       const newChart = new Chart(ctx, {
         type: 'line',
         data: chartData,
-        options: {
-          scales: {
-            x: {
-              display: true,
-            },
-            y: {
-              display: true,
-              ticks: {
-                callback: (val) => {
-                  // const exponent = plotter.getExponent();
-                  // const deci = (Math.log(val + 1) / Math.log(10)) ** (1 / exponent);
-                  // return `${Math.round(deci * 1000) / 10}%`;
-                  if (val === 9) return 'Max';
-                  return `${Math.round((1 - 0.5 ** val) * 1000) / 10}%`;
-                },
-                beginAtZero: true,
-              },
-              max: 9,
-            },
-          },
-          plugins: {
-            title: {
-              display: !mini,
-              text: chartTitle,
-            },
-            tooltip: {
-              callbacks: {
-                label: (context) => {
-                  const val = context.parsed.y;
-                  if (val === 9) return 'Max';
-                  return `${Math.round((1 - 0.5 ** val) * 1000) / 10}%`;
-                },
-              },
-            },
-            background: {
-              color: '#fff',
-            },
-          },
-        },
+        options,
         plugins: [
           {
             id: 'background',
@@ -157,17 +165,22 @@ export default {
       element.click();
       this.pictureMode = false;
     },
+    getScreenWidth() {
+      this.screenWidth = document.documentElement.clientWidth;
+    },
   },
   mounted() {
-    this.exponent = this.plotter.getExponent();
-    // if (this.captures) this.drawChart(this.captures);
-    // else if (this.captureGroups) this.drawChart(null, this.captureGroups);
+    // this.exponent = this.plotter.getExponent();
+    window.addEventListener('resize', this.getScreenWidth);
+    if (this.captures) this.drawChart(this.captures);
+    else if (this.captureGroups) this.drawChart(null, this.captureGroups);
   },
   beforeUnmount() {
     if (charts[this.chartId]) {
       charts[this.chartId].destroy();
       charts[this.chartId] = null;
     }
+    window.removeEventListener('resize', this.getScreenWidth);
   },
 };
 </script>

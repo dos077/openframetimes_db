@@ -1,5 +1,5 @@
 const requiredKeys = [
-  'CPU', 'GPU', 'RAM', 'gameName', 'resolution', 'gamePreset', 'userId', 'frameTimes', 'upscale',
+  'CPU', 'RAM', 'GPU', 'gameName', 'resolution', 'gamePreset', 'userId', 'frameTimes', 'upscale',
 ];
 
 const optionalKeys = [
@@ -7,7 +7,7 @@ const optionalKeys = [
 ];
 
 const metaKeys = [
-  'CPU', 'GPU', 'RAM', 'gameName', 'resolution', 'gamePreset',
+  'CPU', 'RAM', 'GPU', 'gameName', 'resolution', 'gamePreset',
   'syncCap', 'upscale',
 ];
 
